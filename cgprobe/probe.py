@@ -41,7 +41,13 @@ except Exception as e:  # preexec failure surfaces as SubprocessError
                             stdout=subprocess.PIPE, text=True, start_new_session=True)
     child = None
 leaver = int(proc.stdout.readline().strip())
-say("command pid", proc.pid, "setsid pid", leaver)
+time.sleep(1)  # let the background child reach setsid() before the group is ended
+def pgid(pid):
+    try:
+        return os.getpgid(pid)
+    except ProcessLookupError:
+        return None
+say("command pid", proc.pid, "pgid", pgid(proc.pid), "setsid pid", leaver, "pgid", pgid(leaver), "left the group:", pgid(leaver) not in (None, proc.pid))
 if child is not None:
     say("child cgroup.procs:", (child / "cgroup.procs").read_text().split())
 # End the command's process group as stayfixed.processes.kill_group does: TERM, then KILL.
