@@ -1,0 +1,30 @@
+name: cgroup-probe
+on:
+  push:
+    branches: [cgroup-probe]
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
+        with:
+          persist-credentials: false
+      - name: (a) as the runner's user, as a gate runs
+        run: python3 cgprobe/probe.py
+      - name: (b) a user scope with delegation
+        run: |
+          id -u; systemctl --version | head -1
+          sudo loginctl enable-linger "$USER" || echo "enable-linger failed: $?"
+          export XDG_RUNTIME_DIR="/run/user/$(id -u)"
+          if systemd-run --user --scope -p Delegate=yes -- true 2>/dev/null; then
+            echo "ran: systemd-run --user --scope -p Delegate=yes"
+            systemd-run --user --scope -p Delegate=yes -- python3 cgprobe/probe.py
+          else
+            echo "no user manager answered; ran: sudo systemd-run --uid --gid -p Delegate=yes --scope"
+            sudo systemd-run --uid="$(id -u)" --gid="$(id -g)" -p Delegate=yes --scope -- python3 "$PWD/cgprobe/probe.py"
+          fi
+      - name: (c) inside a container, without --privileged
+        run: docker run --rm -v "$PWD/cgprobe:/w:ro" python:3.13 python3 /w/probe.py
