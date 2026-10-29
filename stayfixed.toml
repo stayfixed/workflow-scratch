@@ -20,3 +20,9 @@ base_branch = "main"
 [memory]
 mode = "in-repo"
 groups = ["developer", "volatile"]
+
+[gates.custom.probe]
+run = ["sh", "probe.sh"]
+
+[gates.custom.probe-plain]
+run = ["env", "PROBE_PLAIN=1", "sh", "probe.sh"]
